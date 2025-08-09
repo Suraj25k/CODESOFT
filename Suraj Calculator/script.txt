@@ -1,0 +1,106 @@
+// Get elements
+const display = document.getElementById('display');
+const buttons = document.querySelectorAll('.btn');
+
+// We will build an expression string (using normal JS operators)
+// But for UI we show ÷ and ×. We'll convert them before evaluation.
+let expression = "";
+
+// Helper to update the display (safe)
+function updateDisplay(text) {
+  display.value = text;
+}
+
+// Convert visible symbols to JS operators
+function symbolToOperator(ch) {
+  if (ch === '÷') return '/';
+  if (ch === '×') return '*';
+  return ch;
+}
+
+// Handle button clicks
+buttons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const val = btn.getAttribute('data-value');
+    const action = btn.getAttribute('data-action');
+
+    if (val) {
+      // number or dot pressed
+      expression += val;
+      updateDisplay(expression);
+      return;
+    }
+
+    if (action) {
+      if (action === 'clear') {
+        expression = "";
+        updateDisplay("");
+        return;
+      }
+      if (action === 'back') {
+        expression = expression.slice(0, -1);
+        updateDisplay(expression);
+        return;
+      }
+      // operators: add, subtract, multiply, divide
+      let op = '';
+      if (action === 'add') op = '+';
+      if (action === 'subtract') op = '-';
+      if (action === 'multiply') op = '×';
+      if (action === 'divide') op = '÷';
+
+      // prevent two operators in a row (simple guard)
+      if (expression === "" && (op === '+' || op === '-' )) {
+        // allow starting with + or - as unary (keeps for simplicity)
+        expression += op;
+      } else if (expression !== "" && /[+\-×÷*/]$/.test(expression.slice(-1))) {
+        // replace last operator with new one
+        expression = expression.slice(0, -1) + op;
+      } else {
+        expression += op;
+      }
+      updateDisplay(expression);
+      return;
+    }
+  });
+});
+
+// Equals button
+document.getElementById('equals').addEventListener('click', () => {
+  if (!expression) return;
+  try {
+    // Convert displayed symbols to JS operators
+    const safeExpr = expression.split('').map(symbolToOperator).join('');
+    // Use eval carefully — wrapped in try/catch
+    // For beginners this is OK; in production you'd use a parser.
+    const result = eval(safeExpr);
+    updateDisplay(String(result));
+    expression = String(result); // allow further calculations
+  } catch (err) {
+    updateDisplay('Error');
+    expression = "";
+  }
+});
+
+// Optional: allow keyboard input for numbers and operators
+window.addEventListener('keydown', (e) => {
+  const allowed = '0123456789.+-*/';
+  if (allowed.includes(e.key)) {
+    e.preventDefault();
+    // Map * and / to display-friendly symbols for UI consistency
+    const map = { '*': '×', '/': '÷' };
+    expression += (map[e.key] || e.key);
+    updateDisplay(expression);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('equals').click();
+  } else if (e.key === 'Backspace') {
+    e.preventDefault();
+    expression = expression.slice(0, -1);
+    updateDisplay(expression);
+  } else if (e.key.toLowerCase() === 'c') {
+    e.preventDefault();
+    expression = "";
+    updateDisplay("");
+  }
+});
